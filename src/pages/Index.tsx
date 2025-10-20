@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import Icon from '@/components/ui/icon';
 
 interface Question {
@@ -19,6 +20,13 @@ interface Scenario {
   icon: string;
   info: string;
   questions: Question[];
+}
+
+interface ScenarioResult {
+  scenarioId: number;
+  score: number;
+  total: number;
+  completed: boolean;
 }
 
 const scenarios: Scenario[] = [
@@ -301,7 +309,7 @@ const scenarios: Scenario[] = [
 ];
 
 const Index = () => {
-  const [currentView, setCurrentView] = useState<'home' | 'scenarios' | 'quiz'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'scenarios' | 'quiz' | 'certificate'>('home');
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const [showInfo, setShowInfo] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -309,6 +317,44 @@ const Index = () => {
   const [score, setScore] = useState(0);
   const [answeredQuestions, setAnsweredQuestions] = useState(0);
   const [showResult, setShowResult] = useState(false);
+  const [completedScenarios, setCompletedScenarios] = useState<ScenarioResult[]>([]);
+  const [userName, setUserName] = useState('');
+  const [showNameInput, setShowNameInput] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('completedScenarios');
+    if (saved) {
+      setCompletedScenarios(JSON.parse(saved));
+    }
+  }, []);
+
+  const saveProgress = (scenarioId: number, score: number, total: number) => {
+    const newResult: ScenarioResult = {
+      scenarioId,
+      score,
+      total,
+      completed: true
+    };
+    
+    const updated = completedScenarios.filter(r => r.scenarioId !== scenarioId);
+    updated.push(newResult);
+    setCompletedScenarios(updated);
+    localStorage.setItem('completedScenarios', JSON.stringify(updated));
+  };
+
+  const allScenariosCompleted = () => {
+    return scenarios.every(scenario => 
+      completedScenarios.some(r => r.scenarioId === scenario.id && r.completed)
+    );
+  };
+
+  const getTotalScore = () => {
+    return completedScenarios.reduce((sum, r) => sum + r.score, 0);
+  };
+
+  const getTotalQuestions = () => {
+    return completedScenarios.reduce((sum, r) => sum + r.total, 0);
+  };
 
   const handleStartLearning = () => {
     setCurrentView('scenarios');
@@ -351,6 +397,7 @@ const Index = () => {
       setSelectedAnswer(null);
     } else {
       setShowResult(true);
+      saveProgress(selectedScenario.id, score, selectedScenario.questions.length);
     }
   };
 
@@ -366,6 +413,19 @@ const Index = () => {
     setAnsweredQuestions(0);
     setShowResult(false);
     setShowInfo(true);
+  };
+
+  const handleViewCertificate = () => {
+    if (allScenariosCompleted()) {
+      setShowNameInput(true);
+    }
+  };
+
+  const handleGenerateCertificate = () => {
+    if (userName.trim()) {
+      setCurrentView('certificate');
+      setShowNameInput(false);
+    }
   };
 
   const progressPercentage = selectedScenario 
@@ -407,9 +467,15 @@ const Index = () => {
                   <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
                     <Icon name="Users" className="text-primary" size={24} />
                   </div>
-                  <CardTitle>Для студентов</CardTitle>
-                  <CardDescription>
-                    Бесплатный доступ к базовым сценариям обучения
+                  <CardTitle className="mb-3">Для студентов</CardTitle>
+                  <CardDescription className="text-sm space-y-2">
+                    <p className="font-medium text-gray-700">Почему это полезно:</p>
+                    <ul className="space-y-1 text-gray-600">
+                      <li>• Практические навыки для трудоустройства</li>
+                      <li>• Понимание реальных производственных процессов</li>
+                      <li>• Сертификат после прохождения всех сценариев</li>
+                      <li>• Подготовка к работе на предприятиях</li>
+                    </ul>
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -419,9 +485,15 @@ const Index = () => {
                   <div className="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center mb-4">
                     <Icon name="Building2" className="text-secondary" size={24} />
                   </div>
-                  <CardTitle>Для предприятий</CardTitle>
-                  <CardDescription>
-                    Расширенные функции и аналитика по подписке
+                  <CardTitle className="mb-3">Для предприятий</CardTitle>
+                  <CardDescription className="text-sm space-y-2">
+                    <p className="font-medium text-gray-700">Почему это полезно:</p>
+                    <ul className="space-y-1 text-gray-600">
+                      <li>• Обучение сотрудников без отрыва от производства</li>
+                      <li>• Снижение рисков нарушений в контроле качества</li>
+                      <li>• Аналитика по прогрессу команды</li>
+                      <li>• Экономия на очном обучении</li>
+                    </ul>
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -431,13 +503,52 @@ const Index = () => {
                   <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center mb-4">
                     <Icon name="Award" className="text-accent" size={24} />
                   </div>
-                  <CardTitle>Для вузов</CardTitle>
-                  <CardDescription>
-                    Сотрудничество с образовательными центрами
+                  <CardTitle className="mb-3">Для вузов</CardTitle>
+                  <CardDescription className="text-sm space-y-2">
+                    <p className="font-medium text-gray-700">Почему это полезно:</p>
+                    <ul className="space-y-1 text-gray-600">
+                      <li>• Современный инструмент для образовательных программ</li>
+                      <li>• Повышение практической подготовки студентов</li>
+                      <li>• Интеграция с учебными планами</li>
+                      <li>• Партнерство с технопарками</li>
+                    </ul>
                   </CardDescription>
                 </CardHeader>
               </Card>
             </div>
+
+            {completedScenarios.length > 0 && (
+              <Card className="border-2 border-green-200 bg-green-50/50 mb-8">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl flex items-center gap-2">
+                        <Icon name="Trophy" className="text-green-600" size={24} />
+                        Ваш прогресс
+                      </CardTitle>
+                      <CardDescription className="mt-2">
+                        Пройдено сценариев: {completedScenarios.length} из {scenarios.length}
+                      </CardDescription>
+                    </div>
+                    {allScenariosCompleted() && (
+                      <Button 
+                        onClick={handleViewCertificate}
+                        className="bg-gradient-to-r from-primary to-secondary"
+                      >
+                        <Icon name="Award" className="mr-2" size={20} />
+                        Получить сертификат
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Progress 
+                    value={(completedScenarios.length / scenarios.length) * 100} 
+                    className="h-3"
+                  />
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       )}
@@ -452,40 +563,63 @@ const Index = () => {
               </Button>
             </div>
 
-            <h2 className="text-4xl font-bold text-gray-900 mb-8">Сценарии обучения</h2>
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-4xl font-bold text-gray-900">Сценарии обучения</h2>
+              {allScenariosCompleted() && (
+                <Badge className="bg-green-600 text-white px-4 py-2 text-sm">
+                  <Icon name="CheckCircle2" className="mr-2" size={16} />
+                  Все сценарии пройдены!
+                </Badge>
+              )}
+            </div>
             
             <div className="grid md:grid-cols-2 gap-6">
-              {scenarios.map((scenario, index) => (
-                <Card 
-                  key={scenario.id} 
-                  className="border-2 hover:border-primary/50 transition-all hover:shadow-lg cursor-pointer group"
-                  onClick={() => handleSelectScenario(scenario)}
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <CardHeader>
-                    <div className="flex items-start gap-4">
-                      <div className="w-14 h-14 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                        <Icon name={scenario.icon as any} className="text-white" size={28} />
+              {scenarios.map((scenario, index) => {
+                const completed = completedScenarios.find(r => r.scenarioId === scenario.id);
+                return (
+                  <Card 
+                    key={scenario.id} 
+                    className={`border-2 transition-all hover:shadow-lg cursor-pointer group ${
+                      completed ? 'border-green-200 bg-green-50/30' : 'hover:border-primary/50'
+                    }`}
+                    onClick={() => handleSelectScenario(scenario)}
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <CardHeader>
+                      <div className="flex items-start gap-4">
+                        <div className="w-14 h-14 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform relative">
+                          <Icon name={scenario.icon as any} className="text-white" size={28} />
+                          {completed && (
+                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-600 rounded-full flex items-center justify-center">
+                              <Icon name="Check" className="text-white" size={14} />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <CardTitle className="text-xl mb-2">{scenario.title}</CardTitle>
+                          <CardDescription className="text-base">
+                            {scenario.description}
+                          </CardDescription>
+                          {completed && (
+                            <div className="mt-2 text-sm text-green-700 font-medium">
+                              Результат: {completed.score}/{completed.total}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <CardTitle className="text-xl mb-2">{scenario.title}</CardTitle>
-                        <CardDescription className="text-base">
-                          {scenario.description}
-                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Icon name="FileQuestion" size={16} />
+                          10 вопросов
+                        </span>
+                        <Icon name="ChevronRight" size={20} className="text-primary group-hover:translate-x-1 transition-transform" />
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Icon name="FileQuestion" size={16} />
-                        10 вопросов
-                      </span>
-                      <Icon name="ChevronRight" size={20} className="text-primary group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -675,6 +809,148 @@ const Index = () => {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {currentView === 'certificate' && (
+        <div className="container mx-auto px-4 py-12 animate-fade-in">
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-6">
+              <Button variant="ghost" onClick={() => setCurrentView('home')}>
+                <Icon name="ArrowLeft" className="mr-2" size={20} />
+                На главную
+              </Button>
+            </div>
+
+            <Card className="border-4 border-primary/20 bg-gradient-to-br from-blue-50 to-purple-50 shadow-2xl print-certificate">
+              <CardContent className="p-12">
+                <div className="text-center space-y-6">
+                  <div className="flex justify-center">
+                    <div className="w-24 h-24 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center shadow-lg">
+                      <Icon name="Award" className="text-white" size={48} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <h1 className="text-4xl font-bold text-gray-900 mb-2">Сертификат</h1>
+                    <p className="text-lg text-gray-600">об успешном завершении обучения</p>
+                  </div>
+
+                  <div className="border-t-2 border-b-2 border-primary/20 py-8 my-8">
+                    <p className="text-gray-700 mb-4">Настоящим подтверждается, что</p>
+                    <h2 className="text-3xl font-bold text-primary mb-4">{userName}</h2>
+                    <p className="text-gray-700 mb-2">успешно завершил(-а) обучение по программе</p>
+                    <h3 className="text-2xl font-semibold text-gray-900 mb-6">
+                      "Управление качеством пищевой продукции"
+                    </h3>
+                    <p className="text-gray-600">в образовательной системе FoodQualityLab Quest</p>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-6 my-8">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-primary mb-1">
+                        {getTotalScore()}
+                      </div>
+                      <div className="text-sm text-gray-600">Правильных ответов</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-secondary mb-1">
+                        {scenarios.length}
+                      </div>
+                      <div className="text-sm text-gray-600">Сценариев пройдено</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-accent mb-1">
+                        {Math.round((getTotalScore() / getTotalQuestions()) * 100)}%
+                      </div>
+                      <div className="text-sm text-gray-600">Успеваемость</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 text-left bg-white/70 p-6 rounded-lg">
+                    <p className="font-semibold text-gray-900">Освоенные компетенции:</p>
+                    <ul className="space-y-2 text-gray-700">
+                      {scenarios.map(scenario => (
+                        <li key={scenario.id} className="flex items-center gap-2">
+                          <Icon name="CheckCircle2" className="text-green-600 flex-shrink-0" size={18} />
+                          <span>{scenario.title}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="pt-6 border-t border-gray-300 flex items-center justify-between text-sm text-gray-600">
+                    <div>
+                      <p className="font-medium">Дата выдачи:</p>
+                      <p>{new Date().toLocaleDateString('ru-RU', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">Уникальный номер:</p>
+                      <p className="font-mono">FQL-{Date.now().toString(36).toUpperCase()}</p>
+                    </div>
+                  </div>
+
+                  <Button 
+                    size="lg" 
+                    className="mt-8"
+                    onClick={() => window.print()}
+                  >
+                    <Icon name="Download" className="mr-2" size={20} />
+                    Скачать сертификат
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {showNameInput && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
+          <Card className="w-full max-w-md mx-4 animate-scale-in">
+            <CardHeader>
+              <CardTitle className="text-2xl">Получить сертификат</CardTitle>
+              <CardDescription>
+                Поздравляем! Вы прошли все сценарии обучения. Введите ваше имя для сертификата.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Ваше полное имя
+                </label>
+                <Input
+                  type="text"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  placeholder="Иванов Иван Иванович"
+                  className="h-12 text-base"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setShowNameInput(false)}
+                >
+                  Отмена
+                </Button>
+                <Button 
+                  className="flex-1"
+                  onClick={handleGenerateCertificate}
+                  disabled={!userName.trim()}
+                >
+                  <Icon name="Award" className="mr-2" size={20} />
+                  Получить
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

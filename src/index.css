@@ -95,3 +95,25 @@
     font-family: "Rubik", sans-serif;
   }
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .print-certificate,
+  .print-certificate * {
+    visibility: visible;
+  }
+
+  .print-certificate {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  button {
+    display: none !important;
+  }
+}
