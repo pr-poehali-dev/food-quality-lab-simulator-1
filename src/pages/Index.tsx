@@ -19,7 +19,12 @@ interface Scenario {
   description: string;
   icon: string;
   info: string;
+  image: string;
   questions: Question[];
+}
+
+interface QuestionWithImage extends Question {
+  image?: string;
 }
 
 interface ScenarioResult {
@@ -35,6 +40,7 @@ const scenarios: Scenario[] = [
     title: 'Входной контроль сырья',
     description: 'Научитесь проверять качество поступающего сырья',
     icon: 'PackageCheck',
+    image: 'https://cdn.poehali.dev/projects/deb7d4cd-bbe2-4cb2-86cd-078601893f75/files/0ba391a0-5c6a-4682-922f-3d72acb5ad9d.jpg',
     info: 'Входной контроль — первый и важнейший этап обеспечения качества продукции. На этом этапе проверяется соответствие сырья установленным требованиям: органолептические показатели, документация, условия транспортировки и хранения. Правильный входной контроль предотвращает попадание некачественного сырья в производство.',
     questions: [
       {
@@ -104,6 +110,7 @@ const scenarios: Scenario[] = [
     title: 'ХАССП: Критические точки',
     description: 'Освойте систему анализа рисков и контроля критических точек',
     icon: 'ShieldCheck',
+    image: 'https://cdn.poehali.dev/projects/deb7d4cd-bbe2-4cb2-86cd-078601893f75/files/4e4e8c7b-6a0c-4592-935d-cda6d7061165.jpg',
     info: 'ХАССП (HACCP) — международная система управления безопасностью пищевых продуктов. Она основана на выявлении критических контрольных точек (ККТ) в производственном процессе, где существует риск загрязнения продукции. Система включает 7 принципов: анализ опасностей, определение ККТ, установление критических пределов, мониторинг, корректирующие действия, верификацию и документирование.',
     questions: [
       {
@@ -173,6 +180,7 @@ const scenarios: Scenario[] = [
     title: 'Микробиологический контроль',
     description: 'Изучите методы контроля микробиологической безопасности',
     icon: 'Microscope',
+    image: 'https://cdn.poehali.dev/projects/deb7d4cd-bbe2-4cb2-86cd-078601893f75/files/01b58db2-094b-4193-84df-377b5722bded.jpg',
     info: 'Микробиологический контроль — важнейший аспект обеспечения безопасности пищевых продуктов. Он включает выявление патогенных микроорганизмов (сальмонелла, листерия, кишечная палочка), контроль микробной обсемененности, санитарно-гигиенический контроль производства. Анализы проводятся на разных этапах: сырье, полуфабрикаты, готовая продукция, смывы с оборудования.',
     questions: [
       {
@@ -242,6 +250,7 @@ const scenarios: Scenario[] = [
     title: 'Санитарная обработка',
     description: 'Правила санитарной обработки оборудования и помещений',
     icon: 'Sparkles',
+    image: 'https://cdn.poehali.dev/projects/deb7d4cd-bbe2-4cb2-86cd-078601893f75/files/2ae4c494-a4cd-4d69-b204-7dbe64d12f0e.jpg',
     info: 'Санитарная обработка — комплекс мероприятий по поддержанию чистоты на производстве. Включает мойку и дезинфекцию оборудования, помещений, инвентаря. Правильная санитария предотвращает перекрестное загрязнение, рост микроорганизмов и обеспечивает безопасность продукции. Используются различные моющие и дезинфицирующие средства, соблюдаются температурные режимы и время экспозиции.',
     questions: [
       {
@@ -320,6 +329,8 @@ const Index = () => {
   const [completedScenarios, setCompletedScenarios] = useState<ScenarioResult[]>([]);
   const [userName, setUserName] = useState('');
   const [showNameInput, setShowNameInput] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(7);
+  const [timerActive, setTimerActive] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('completedScenarios');
@@ -327,6 +338,18 @@ const Index = () => {
       setCompletedScenarios(JSON.parse(saved));
     }
   }, []);
+
+  useEffect(() => {
+    if (timerActive && timeLeft > 0 && selectedAnswer === null) {
+      const timer = setTimeout(() => {
+        setTimeLeft(timeLeft - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (timeLeft === 0 && selectedAnswer === null) {
+      handleNextQuestion();
+      setTimeLeft(7);
+    }
+  }, [timerActive, timeLeft, selectedAnswer]);
 
   const saveProgress = (scenarioId: number, score: number, total: number) => {
     const newResult: ScenarioResult = {
@@ -373,12 +396,15 @@ const Index = () => {
 
   const handleStartQuiz = () => {
     setShowInfo(false);
+    setTimerActive(true);
+    setTimeLeft(7);
   };
 
   const handleAnswerSelect = (answerIndex: number) => {
     if (selectedAnswer !== null) return;
     
     setSelectedAnswer(answerIndex);
+    setTimerActive(false);
     
     if (selectedScenario) {
       const isCorrect = selectedScenario.questions[currentQuestionIndex].correctAnswer === answerIndex;
@@ -395,8 +421,11 @@ const Index = () => {
     if (currentQuestionIndex < selectedScenario.questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSelectedAnswer(null);
+      setTimeLeft(7);
+      setTimerActive(true);
     } else {
       setShowResult(true);
+      setTimerActive(false);
       saveProgress(selectedScenario.id, score, selectedScenario.questions.length);
     }
   };
@@ -413,6 +442,8 @@ const Index = () => {
     setAnsweredQuestions(0);
     setShowResult(false);
     setShowInfo(true);
+    setTimeLeft(7);
+    setTimerActive(false);
   };
 
   const handleViewCertificate = () => {
@@ -585,6 +616,15 @@ const Index = () => {
                     onClick={() => handleSelectScenario(scenario)}
                     style={{ animationDelay: `${index * 0.1}s` }}
                   >
+                    {scenario.image && (
+                      <div className="w-full h-48 overflow-hidden">
+                        <img 
+                          src={scenario.image} 
+                          alt={scenario.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    )}
                     <CardHeader>
                       <div className="flex items-start gap-4">
                         <div className="w-14 h-14 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform relative">
@@ -611,8 +651,8 @@ const Index = () => {
                     <CardContent>
                       <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <Icon name="FileQuestion" size={16} />
-                          10 вопросов
+                          <Icon name="Timer" size={16} />
+                          10 вопросов • 7 сек на ответ
                         </span>
                         <Icon name="ChevronRight" size={20} className="text-primary group-hover:translate-x-1 transition-transform" />
                       </div>
@@ -651,6 +691,16 @@ const Index = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  {selectedScenario.image && (
+                    <div className="w-full h-80 rounded-lg overflow-hidden">
+                      <img 
+                        src={selectedScenario.image} 
+                        alt={selectedScenario.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+
                   <div>
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                       <Icon name="BookOpen" size={20} className="text-primary" />
@@ -665,7 +715,7 @@ const Index = () => {
                     <Icon name="Info" className="text-primary" size={24} />
                     <div className="text-sm text-gray-700">
                       <p className="font-medium">В этом сценарии вас ждет:</p>
-                      <p>10 вопросов для проверки знаний</p>
+                      <p>10 вопросов с таймером 7 секунд на каждый</p>
                     </div>
                   </div>
 
@@ -737,12 +787,30 @@ const Index = () => {
                   <Badge variant="outline" className="text-base px-4 py-2">
                     Вопрос {currentQuestionIndex + 1} из {selectedScenario.questions.length}
                   </Badge>
-                  <div className="text-sm font-medium text-gray-600">
-                    Счет: {score}/{answeredQuestions}
+                  <div className="flex items-center gap-4">
+                    <div className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold ${
+                      timeLeft <= 3 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
+                    }`}>
+                      <Icon name="Timer" size={20} />
+                      <span className="text-lg">{timeLeft}с</span>
+                    </div>
+                    <div className="text-sm font-medium text-gray-600">
+                      Счет: {score}/{answeredQuestions}
+                    </div>
                   </div>
                 </div>
 
                 <Progress value={progressPercentage} className="h-2" />
+
+                {selectedScenario.image && (
+                  <div className="w-full h-64 rounded-lg overflow-hidden">
+                    <img 
+                      src={selectedScenario.image} 
+                      alt={selectedScenario.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
 
                 <Card className="border-2 animate-scale-in">
                   <CardHeader>
